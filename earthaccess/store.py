@@ -35,11 +35,10 @@ class EarthAccessFile(fsspec.spec.AbstractBufferedFile):
 
     @property
     def fs_file(self) -> fsspec.spec.AbstractBufferedFile:
+        with _lock:
+            if self._fs_file is None:
+                self._fs_file = earthaccess.open([self.granule])[0].fs_file
         return self._fs_file
-
-    @fs_file.setter
-    def fs_file(self, value: fsspec.spec.AbstractBufferedFile) -> None:
-        self._fs_file = value
 
     def __getattr__(self, method: str) -> Any:
         return getattr(self.fs_file, method)
@@ -55,12 +54,7 @@ class EarthAccessFile(fsspec.spec.AbstractBufferedFile):
     def __repr__(self) -> str:
         return str(self.fs_file)
 
-    def _fetch_range(self, start, end) -> Any:
-        with _lock:
-            if self.fs_file is None:
-                self.fs_file = earthaccess.open([self.granule])[0].fs_file
-        print(f"{self.fs_file = }")
-        print(f"{type(self.fs_file) = }")
+    def _fetch_range(self, start, end):  # type: ignore
         return self.fs_file._fetch_range(start, end)
 
 
