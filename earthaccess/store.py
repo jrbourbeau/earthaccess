@@ -1,6 +1,7 @@
 import datetime
 import os
 import shutil
+import threading
 import traceback
 from copy import deepcopy
 from functools import lru_cache
@@ -22,25 +23,45 @@ from .daac import DAAC_TEST_URLS, find_provider
 from .results import DataGranule
 from .search import DataCollections
 
+_lock = threading.Lock()
+
 
 class EarthAccessFile(fsspec.spec.AbstractBufferedFile):
-    def __init__(self, f: fsspec.AbstractFileSystem, granule: DataGranule) -> None:
-        self.f = f
+    def __init__(
+        self, f: "fsspec.spec.AbstractBufferedFile | None", granule: DataGranule
+    ) -> None:
+        self._fs_file = f
         self.granule = granule
 
+    @property
+    def fs_file(self) -> fsspec.spec.AbstractBufferedFile:
+        return self._fs_file
+
+    @fs_file.setter
+    def fs_file(self, value: fsspec.spec.AbstractBufferedFile) -> None:
+        self._fs_file = value
+
     def __getattr__(self, method: str) -> Any:
-        return getattr(self.f, method)
+        return getattr(self.fs_file, method)
 
     def __reduce__(self) -> Any:
         return make_instance, (
-            type(self.f),
+            type(self.fs_file),
             self.granule,
             earthaccess.__auth__,
-            dumps(self.f),
+            dumps(self.fs_file),
         )
 
     def __repr__(self) -> str:
-        return str(self.f)
+        return str(self.fs_file)
+
+    def _fetch_range(self, start, end) -> Any:
+        with _lock:
+            if self.fs_file is None:
+                self.fs_file = earthaccess.open([self.granule])[0].fs_file
+        print(f"{self.fs_file = }")
+        print(f"{type(self.fs_file) = }")
+        return self.fs_file._fetch_range(start, end)
 
 
 def _open_files(
@@ -78,7 +99,7 @@ def make_instance(
         # On AWS but not using a S3File. Reopen the file in this case for direct S3 access.
         # NOTE: This uses the first data_link listed in the granule. That's not
         #       guaranteed to be the right one.
-        return EarthAccessFile(earthaccess.open([granule])[0], granule)
+        return EarthAccessFile(None, granule)
     else:
         return EarthAccessFile(loads(data), granule)
 
