@@ -23,19 +23,20 @@ from .daac import DAAC_TEST_URLS, find_provider
 from .results import DataGranule
 from .search import DataCollections
 
-_lock = threading.Lock()
 
 
 class EarthAccessFile(fsspec.spec.AbstractBufferedFile):
+
     def __init__(
         self, f: "fsspec.spec.AbstractBufferedFile | None", granule: DataGranule
     ) -> None:
         self._fs_file = f
         self.granule = granule
+        self._lock = threading.RLock()
 
     @property
     def fs_file(self) -> fsspec.spec.AbstractBufferedFile:
-        with _lock:
+        with self._lock:
             if self._fs_file is None:
                 self._fs_file = earthaccess.open([self.granule])[0].fs_file
         return self._fs_file
@@ -45,14 +46,14 @@ class EarthAccessFile(fsspec.spec.AbstractBufferedFile):
 
     def __reduce__(self) -> Any:
         return make_instance, (
-            type(self.fs_file),
+            type(self._fs_file) if self._fs_file is not None else None,
             self.granule,
             earthaccess.__auth__,
-            dumps(self.fs_file),
+            dumps(self._fs_file) if self._fs_file is not None else None,
         )
 
     def __repr__(self) -> str:
-        return str(self.fs_file)
+        return str(self._fs_file)
 
     def _fetch_range(self, start, end):  # type: ignore
         return self.fs_file._fetch_range(start, end)
@@ -87,9 +88,7 @@ def make_instance(
         earthaccess.__auth__ = auth
         earthaccess.login()
 
-    if (earthaccess.__store__.running_in_aws and cls is not s3fs.S3File) or (
-        not earthaccess.__store__.running_in_aws and cls is s3fs.S3File
-    ):
+    if cls is None or (earthaccess.__store__.running_in_aws and cls is not s3fs.S3File) or (not earthaccess.__store__.running_in_aws and cls is s3fs.S3File):
         # On AWS but not using a S3File. Reopen the file in this case for direct S3 access.
         # NOTE: This uses the first data_link listed in the granule. That's not
         #       guaranteed to be the right one.
