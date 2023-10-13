@@ -560,7 +560,10 @@ class Store(object):
                 print(f"Accessing cloud dataset using provider: {provider}")
                 s3_fs = self.get_s3fs_session(provider=provider)
             # TODO: make this async
+            print(f"(_get_granules) {data_links = }")
             for file in data_links:
+                print(f"(_get_granules) {file = }")
+                print(f"(_get_granules) {local_path = }")
                 s3_fs.get(file, local_path)
                 file_name = os.path.join(local_path, os.path.basename(file))
                 print(f"Downloaded: {file_name}")
