@@ -1,5 +1,35 @@
 # Changelog
 
+## [v0.8.2] 2023-12-06
+* Bug fixes:
+    * Enable AWS check with IMDSv2
+    * Add region to running in AWS check
+    * Handle opening multi-file granules
+* Maintenance:
+    * Add CI tests with minimum supported versions
+    * Update poetry lockfile
+    * Add `python-dateutil` as a direct dependency
+    * Remove binder PR comments
+    * Add YAML formatting (prettier)
+
+## [v0.8.1] 2023-12-01
+* New Features:
+    * Add `kerchunk` metadata consolidation utility.
+* Enhancements:
+    * Handle S3 credential expiration more gracefully.
+* Maintenanece:
+    * Use dependabot to update Github Actions.
+    * Consolidate dependabot updates.
+    * Switch to `ruff` for formatting.
+
+## [v0.8.0] 2023-11-29
+* Bug fixes:
+    * Fix zero granules being reported for restricted datasets.
+* Enhancements:
+    * earthaccess will `raise` errors instead of `print`ing them in more cases.
+    * `daac` and `provider` parameters are now normalized to uppercase, since lowercase
+      characters are never valid.
+
 ## [v0.7.1] 2023-11-08
 * Bug Fixes:
     * Treat granules without `RelatedUrls` as not cloud-hosted.

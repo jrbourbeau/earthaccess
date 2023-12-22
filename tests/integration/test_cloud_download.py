@@ -120,7 +120,7 @@ def test_earthaccess_can_download_cloud_collection_granules(daac):
         granule_query = DataGranules().concept_id(concept_id)
         total_granules = granule_query.hits()
         granules = granule_query.get(granules_count)
-        assert type(granules) is list and len(granules) > 0
+        assert isinstance(granules, list) and len(granules) > 0
         assert isinstance(granules[0], earthaccess.results.DataGranule)
         local_path = f"./tests/integration/data/{concept_id}"
         granules_to_download, total_size_cmr = get_sample_granules(
@@ -157,3 +157,13 @@ def test_earthaccess_can_download_cloud_collection_granules(daac):
                 f"Warning: {concept_id} downloaded size {total_mb_downloaded}MB is "
                 f"different from the size reported by CMR: {total_size_cmr}MB"
             )
+
+
+def test_multi_file_granule(tmp_path):
+    # Ensure granules that contain multiple files are handled correctly
+    granules = earthaccess.search_data(short_name="HLSL30", count=1)
+    assert len(granules) == 1
+    urls = granules[0].data_links()
+    assert len(urls) > 1
+    files = earthaccess.download(granules, str(tmp_path))
+    assert set(map(os.path.basename, urls)) == set(map(os.path.basename, files))
